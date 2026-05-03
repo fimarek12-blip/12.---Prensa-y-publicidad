@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Vocabulario Avanzado - Clase</title>
+    
+    <style>
+        :root { --p: #2c3e50; --a: #3498db; --bg: #f4f7f6; --ok: #27ae60; --bad: #e74c3c; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: var(--bg); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px 0;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* Título centrado */
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+            text-align: center;
+        }
+
+        /* Botones para cambiar entre filas */
+        .row-selector {
+            display: flex;
+            gap: 10px;
+            width: 90vw;
+            max-width: 450px;
+            margin-bottom: 15px;
+        }
+
+        .row-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--p);
+            border-radius: 10px;
+            background: white;
+            color: var(--p);
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .row-btn.active {
+            background: var(--p);
+            color: white;
+        }
+
+        .card-container { 
+            perspective: 1000px; 
+            width: 90vw; 
+            max-width: 450px; 
+            height: 300px; 
+            cursor: pointer;
+            touch-action: manipulation; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card { 
+            width: 100%; 
+            height: 100%; 
+            position: relative; 
+            transition: transform 0.4s; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            border-radius: 15px;
+            transform-style: preserve-3d;
+            -webkit-transform-style: preserve-3d;
+        }
+
+        .card.flipped { transform: rotateY(180deg); }
+
+        .face { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 25px; 
+            box-sizing: border-box; 
+            border-radius: 15px; 
+            text-align: center; 
+            font-size: 1.4rem;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        .front { background: white; color: var(--p); font-weight: bold; border: 2px solid #ddd; }
+        .back { background: var(--a); color: white; transform: rotateY(180deg); font-size: 1.2rem; }
+
+        .controls { 
+            margin-top: 15px;
+            display: flex; 
+            gap: 10px; 
+            width: 90vw; 
+            max-width: 450px;
+        }
+
+        .action-controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            width: 90vw;
+            max-width: 450px;
+        }
+
+        button { 
+            flex: 1; 
+            padding: 15px 10px; 
+            border: none; 
+            border-radius: 12px; 
+            background: var(--p); 
+            color: white; 
+            font-size: 1rem; 
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation; 
+        }
+
+        .btn-know { background: var(--ok); }
+        .btn-dont-know { background: var(--bad); }
+
+        .info { margin-top: 12px; font-weight: bold; color: #7f8c8d; }
+
+        @media (max-height: 600px) {
+            .card-container { height: 220px; }
+            .face { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Prensa y publicidad</h1>
+
+    <div class="row-selector">
+        <button class="row-btn active" id="btn-fila-no" onclick="setFila('no')">Por aprender (<span id="count-no">0</span>)</button>
+        <button class="row-btn" id="btn-fila-si" onclick="setFila('si')">Ya aprendidas (<span id="count-si">0</span>)</button>
+    </div>
+
+    <div class="card-container" onclick="flip()">
+        <div class="card" id="c">
+            <div class="face front" id="q">Cargando...</div>
+            <div class="face back" id="a">...</div>
+        </div>
+    </div>
+
+    <div class="info" id="status">0 / 0</div>
+
+    <div class="controls">
+        <button onclick="prev()">⬅ Ant.</button>
+        <button onclick="shuffle()">🔀 Mezclar</button>
+        <button onclick="next()">Sig. ➡</button>
+    </div>
+
+    <div class="action-controls" id="eval-controls">
+        <button class="btn-dont-know" onclick="clasificarPalabra(false)">❌ No la sé</button>
+        <button class="btn-know" onclick="clasificarPalabra(true)">✔ Ya la sé</button>
+    </div>
+
+<script>
+    // Tu lista original de palabras del archivo de Naturaleza
+    const todasLasPalabras = [
+        {q: "periódico, m./rotativo, m./gaceta, f.", a: "noviny"},
+	{q: "periódico, m., diario, (m.),", a: "denní noviny (deník)"},
+	{q: "periódico, m., semanal/semanario, (m.),", a: "týdenní noviny (týdenník)"},
+	{q: "quincenal", a: "dvoutýdenní(k)"},
+	{q: "anual", a: "roční"},
+	{q: "mensual", a: "měsíční(k)"},
+	{q: "bimensual", a: "dvoutýdenní(k)"},
+	{q: "bimestral", a: "dvouměsíčník"},
+	{q: "trimestral,", a: "trojměsíční(k)/čtvrtletka"},
+	{q: "bianual", a: "půlroční(k)"},
+	{q: "periódico local", a: "místní noviny"},
+	{q: "periódico comarcal", a: "oblastní noviny"},
+	{q: "periódico provincial", a: "provinční/provinciální noviny"},
+	{q: "periódico regional", a: "regionální noviny"},
+	{q: "periódico autonómico", a: "autonomní noviny"},
+	{q: "periódico nacional", a: "národní noviny"},
+	{q: "periódico internacional", a: "mezinárodní noviny"},
+	{q: "periódico de larga tirada/de tirada larga/de gran tirada/de mucha tirada x de corta tirada/de tirada corta/de pequeña tirada", a: "noviny vysokého nákladu x nízkého nákladu"},
+	{q: "periódico digital", a: "digitální noviny"},
+	{q: "tirada, f., de mil ejemplares", a: "náklad tisíce výtisků"},
+	{q: "número, m. de ejemplares", a: "počet výtisků"},
+	{q: "publicación, f./edición, f., extraordinaria/especial", a: "speciální edice/výtisk"},
+	{q: "número, m. monográfico", a: "tematické číslo"},
+	{q: "suplemento, m", a: "příloha"},
+	{q: "dominical, m.", a: "nedělní příloha"},
+	{q: "revista, f., cultural,", a: "kulturní časopis"},
+	{q: "revista, f., literaria", a: "literární časopis"},
+	{q: "revista, f., de investigación", a: "výzkumný časopis"},
+	{q: "revista, f., deportiva", a: "sportovní časopis"},
+	{q: "revista, f., de humor/humorística", a: "humoristický časopis"},
+	{q: "revista, f., de moda", a: "módní časopis"},
+	{q: "revista, f., para/de jóvenes/juvenil", a: "časopis pro mladistvé"},
+	{q: "revista, f., infantil", a: "časopis pro děti"},
+	{q: "revista, f., estudiantil", a: "časopis pro studenty"},
+	{q: "revista, f., universitaria", a: "univerzitní časopis"},
+	{q: "revista, f., financiera/ de finanzas", a: "finanční časopis"},
+	{q: "revista, f., de naturaleza", a: "přírodopisný časopis"},
+	{q: "revista, f., de ecología/ecológica", a: "ekologický časopis"},
+	{q: "revista, f., de decoración", a: "časopis o dekoracích"},
+	{q: "revista, f., para el/del hogar", a: "časopis o domácnosti"},
+	{q: "revista, f., científica", a: "vědecký časopis"},
+	{q: "tebeo, m./cómic, m.", a: "komiks"},
+	{q: "boletín, m. (informativo)", a: "(informační) bulletin"},
+	{q: "folleto, m. (informativo, turístico)", a: "(informační) brožura"},
+	{q: "orientación, f., ideología, f., (de un periódico)", a: "ideologická orientace"},
+	{q: "orientación, f., del gobierno/gubernamental, adj./del poder", a: "vládní orientace"},
+	{q: "orientación, f., de tendencias izquierdistas x derechistas", a: "orientace s levicovými x pravicovými tendencemi"},
+	{q: "orientación, f., de izquierdas x de derechas", a: "levicová x pravicová orientace"},
+	{q: "prensa, f., objetiva, sensacionalista/amarilla", a: "objektivní tisk"},
+	{q: "prensa, f., sensacionalista/amarilla", a: "bulvární tisk"},
+	{q: "dar la campanada/ hacer furor, ser un cañonazo/una bomba", a: "vzbudit rozruch, vyvolat poprask"},
+	{q: "periodicucho, m. (de mala muerte)", a: "bulvární plátek"},
+	{q: "redacción, f.", a: "redakce"},
+	{q: "redactor/-a, m. y f.", a: "redaktor/ka"},
+	{q: "redactar", a: "redaktovat"},
+	{q: "imprenta, f.", a: "tiskárna"},
+	{q: "impresor/-a, m. y f.", a: "tiskárna"},
+	{q: "imprimir", a: "vytisknout"},
+	{q: "editorial, f.", a: "nakladatelství"},
+	{q: "editar", a: "editovat"},
+	{q: "cierre, m. de (la) edición", a: "uzávěrka"},
+	{q: "publicación, f.", a: "publikace, vydání"},
+	{q: "publicar", a: "vydat"},
+	{q: "sacar a la luz (pública)", a: "zveřejnit"},
+	{q: "de venta en los quioscos/puestos de periódicos", a: "v prodeji u kiosků a novinářských  stánků"},
+	{q: "vendedor/-a, m.", a: "prodavač"},
+	{q: "repartidor/-a, m. y f.", a: "doručovatel"},
+	{q: "hacer la ruta", a: "studovat žurnalistiku"},
+	{q: "suspender la edición por motivos de censura informativa/de prensa", a: "pozastavit editaci z důvodu informační censury tisku"},
+	{q: "periodista, m y f. de la actualidad (política)", a: "(politický) novinář"},
+	{q: "publicista, m. y f.", a: "publicista"},
+	{q: "comentarista, m. y f.", a: "komentátor"},
+	{q: "cronista, m. y f. deportivo/-a", a: "sportovní komentátor"},
+	{q: "corresponsal, m. y f. en Roma", a: "korespondent v Římě"},
+	{q: "enviado, m. especial al extranjero,", a: "zvláštní zpravodaj v zahraničí"},
+	{q: "enviado, m. de guerra", a: "válečný zpravodaj"},
+	{q: "director/-a, m. y f. del periódico", a: "šéfredaktor"},
+	{q: "subdirector/-a, m. y f.", a: "zástupce šéfredaktora"},
+	{q: "redactor/-a, m. y f.", a: "redaktor/ka"},
+	{q: "redactor/-a-jefe/-a, m y f.", a: "šéfredaktor/ka"},
+	{q: "jefe/-a, m. y f. de sección", a: "vedoucí sekce"},
+	{q: "corrector/-a, m. y f.", a: "korektor"},
+	{q: "reportero/-a, m. y f. gráfico/-a", a: "fotoreportér"},
+	{q: "colaborador/-a, m.", a: "přispěvovatel"},
+	{q: "colaborar con una revista", a: "přispívat do časopisu"},
+	{q: "trabajar de redactor/-a", a: "pracovat jako redaktor"},
+	{q: "trabajar para una revista", a: "pracovat pro časopis"},
+	{q: "portada, f.", a: "titulní strana"},
+	{q: "contraportada, f.", a: "zadní strana"},
+	{q: "páginas, pl.f, centrales", a: "prostřední strany"},
+	{q: "contenido, m.", a: "obsah (veškerá informace uvnitř)"},
+	{q: "sumario, m.", a: "obsah"},
+	{q: "opinión, f. editorial, m.", a: "názor redakce"},
+	{q: "carta, f., al director", a: "dopis šéfredaktorovi"},
+	{q: "información, f., internacional x nacional, local, regional", a: "informace mezinárodního x národního, lokálního, regionálního charakteru"},
+	{q: "sección, f.", a: "sekce"},
+	{q: "apartado, m.", a: "odstavec"},
+	{q: "sección, f., especial/extra", a: "zvláštní sekce"},
+	{q: "especial, m.", a: "speciání"},
+	{q: "extra, m.", a: "navíc"},
+	{q: "sección de sociedad, f.,", a: "společenská sekce"},
+	{q: "sección de espectáculos, pl.m.", a: "zábavní sekce"},
+	{q: "sección de cultura, f.", a: "kulturní sekce"},
+	{q: "sección de cartelera, f.", a: "programová sekce"},
+	{q: "sección de deportes, pl.m.", a: "sportovní sekce"},
+	{q: "sección de economía, f.", a: "ekonomická sekce"},
+	{q: "sección de bolsa, f.", a: "sekce o burze"},
+	{q: "sección de servicios, pl.m.", a: "sekce služeb"},
+	{q: "sección de agenda, f.", a: "televizní program"},
+	{q: "sección de tiempo, m.", a: "předpověď počasí"},
+	{q: "sección de necrológica, f./esquela, f.", a: "nekrolog"},
+	{q: "sección de horóscopo, m.", a: "horoskop"},
+	{q: "sección de pasatiempos, m.", a: "sekce volného času"},
+	{q: "crucigrama, m.", a: "křížovka"},
+	{q: "caricatura, f.", a: "karikatura"},
+	{q: "chiste, m.", a: "vtip"},
+	{q: "anuncios, pl.m. publicitarios", a: "inzerce"},
+	{q: "noticia, f. de última hora x de primera hora/primicia, f.,", a: "aktuální, nová zpráva x rana zpráva"},
+	{q: "de primera mano x de segunda mano", a: "z první x druhé ruky"},
+	{q: "de primera plana/de portada", a: "titulek na první straně"},
+	{q: "aparecer en primera plana", a: "být na titulní straně"},
+	{q: "hecho, m.", a: "čin"},
+	{q: "acontecimiento, m.", a: "událost"},
+	{q: "asunto, m.", a: "záležitost"},
+	{q: "incidente, m.", a: "nehoda"},
+	{q: "artículo, m.", a: "článek"},
+	{q: "titular, m.", a: "titulek"},
+	{q: "subtitular, m.", a: "podtitulek"},
+	{q: "encabezamiento, m.,", a: "záhlaví"},
+	{q: "letra, f. cursiva, f.", a: "kurzíva"},
+	{q: "letra, f. negrita, f.", a: "tučné písmo"},
+	{q: "línea, f.", a: "řádek"},
+	{q: "renglón, m.", a: "řádek"},
+	{q: "párrafo, m.", a: "odstavec"},
+	{q: "columna, f.", a: "sloupec"},
+	{q: "pie, m. de foto", a: "popisek k fotce"},
+	{q: "fe, f. de erratas/errores", a: "seznam chyb"},
+	{q: "traer informaciones básicas", a: "předložit základní informace"},
+	{q: "relatar", a: "vypravovat"},
+	{q: "contar", a: "vyprávět"},
+	{q: "referir", a: "informovat"},
+	{q: "transmitir los hechos desde un punto de vista/de manera objetivo (a) x subjetivo (a)", a: "podat skutky z objektivního x subjektivního úhlu pohledu"},
+	{q: "explicar los pormenores del accidente", a: "objasnit okolnosti nehody"},
+	{q: "ofrecer una amplia información sobre un hecho", a: "nabídnout obsáhlé informace o skutku"},
+	{q: "dar una información exhaustiva", a: "podat vyčerpávající informace"},
+	{q: "abarcar toda la información", a: "obsáhnout všechny informace"},
+	{q: "profundizar en la noticia", a: "prohloubit zprávu"},
+	{q: "ahondar en un asunto", a: "jít do hloubky"},
+	{q: "entrar en detalles", a: "jít do detailu"},
+	{q: "informar desde el lugar de los hechos", a: "informovat z mista událostí"},
+	{q: "rueda, f./conferencia, f., de prensa", a: "tisková konference"},
+	{q: "declaración, f./comunicado, m. de prensa x a la prensa", a: "tisková zpráva x prohlášení pro tisk"},
+	{q: "agencia, f. de información/informativa", a: "tisková kancelář"},
+	{q: "facilitar información", a: "poskytnout informace"},
+	{q: "tener amplio eco en toda la prensa", a: "mít široký ohlas v médiích"},
+	{q: "ocupar la opinión pública, dedicar la máxima atención", a: "zajímat se o veřejné mínění, mít maximální zájem o veřejné mínění"},
+	{q: "entrevistar a alguien/hacer/realizar una entrevista x conceder una entrevista/acceder a ser entrevistado hacer/realizar un reportaje", a: "udělat rozhovor s někým x poskytnout rozhovor"},
+	{q: "tratar un tema palpitante, candente, de (rabiosa) actualidad", a: "bavit se o aktuálním, žhavém, velmi aktuálním dění"},
+	{q: "criticar/atacar/combatir algo", a: "kritizovat něco"},
+	{q: "escandalizar", a: "pohoršit"},
+	{q: "indignar", a: "pobouřit"},
+	{q: "alterar la realidad de los hechos", a: "zkreslovat skutečnost"},
+	{q: "deformar, falsear el mensaje,", a: "překrucovat, falšovat zprávu"},
+	{q: "deformar las palabras de alguien", a: "překrucovat něčí slova"},
+	{q: "echar tierra al asunto", a: "zahrát téma do autu"},
+	{q: "pasar por alto el escándalo", a: "zamést skandál pod koberec"},
+	{q: "callar/encubrir algunos hechos", a: "zatajit některé skutečnosti"},
+	{q: "sin pizca de fundamento", a: "bez základu, nepodložené"},
+	{q: "noticia, f. falsa", a: "falešná zpráva (fake news)"},
+	{q: "desinformación, f., bulo, m.", a: "dezinformace"},
+	{q: "bulo, m.", a: "lež"},
+	{q: "lector, m., abonado, m.", a: "čtenář předplatitel"},
+	{q: "abonarse a/suscribirse a", a: "předplatit, odebírat"},
+	{q: "estar abonado a un periódico", a: "předplácet si časopis"},
+	{q: "suscripción, f. anual", a: "roční předplatné"},
+	{q: "número, m. de suscripciones/suscriptores/ abonados", a: "počet předplatitelů"},
+	{q: "número, m./círculo, m. de lectores", a: "počet čtenářů"},
+	{q: "dirigirse al lector medio x a un lector especializado", a: "zaměřovat se na běžného x specializovaného čtenáře"},
+	{q: "ser un lector regular/asiduo/fiel/leal", a: "být pravidelný čtenář"},
+	{q: "ser un lector crítico/exigente", a: "být kritickým/náročným čtenářem"},
+	{q: "echar un vistazo al periódico/ojear", a: "prolétnout noviny očima"},
+	{q: "pasar las páginas/hojear", a: "prolistovat"},
+	{q: "leer la revista de corrido", a: "přečíst časopis jedním dechem"},
+	{q: "llamar la atención", a: "vzbuzovat pozornost"},
+	{q: "recorte, m. de periódico", a: "výstřižek z novin"},
+
+	    ];
+
+    // Listas dinámicas para clasificar las palabras
+    let palabrasNoConozco = [...todasLasPalabras];
+    let palabrasYaConozco = [];
+
+    let filaActiva = 'no'; // 'no' (por aprender) o 'si' (ya aprendidas)
+    let idx = 0;
+
+    const cardEl = document.getElementById('c');
+    const qEl = document.getElementById('q');
+    const aEl = document.getElementById('a');
+    const sEl = document.getElementById('status');
+
+    function getListaActiva() {
+        return filaActiva === 'no' ? palabrasNoConozco : palabrasYaConozco;
+    }
+
+    function update() {
+        const lista = getListaActiva();
+        cardEl.classList.remove('flipped');
+        
+        // Actualizar contadores dinámicamente en las pestañas superiores
+        document.getElementById('count-no').innerText = palabrasNoConozco.length;
+        document.getElementById('count-si').innerText = palabrasYaConozco.length;
+
+        if (lista.length === 0) {
+            qEl.innerText = "¡Lista vacía!";
+            aEl.innerText = filaActiva === 'no' ? "¡Enhorabuena, has repasado todo!" : "No has añadido ninguna palabra aquí aún.";
+            sEl.innerText = "0 / 0";
+            return;
+        }
+
+        // Validación de límites del índice por si se vacían elementos
+        if (idx >= lista.length) {
+            idx = Math.max(0, lista.length - 1);
+        }
+
+        setTimeout(() => {
+            qEl.innerText = lista[idx].q;
+            aEl.innerText = lista[idx].a;
+            sEl.innerText = `${idx + 1} / ${lista.length}`;
+        }, 100);
+    }
+
+    function flip() { 
+        const lista = getListaActiva();
+        if (lista.length > 0) cardEl.classList.toggle('flipped'); 
+    }
+    
+    function next() { 
+        const lista = getListaActiva();
+        if(idx < lista.length - 1) { idx++; update(); } 
+    }
+    
+    function prev() { 
+        if(idx > 0) { idx--; update(); } 
+    }
+
+    function shuffle() {
+        const lista = getListaActiva();
+        if (lista.length > 0) {
+            lista.sort(() => Math.random() - 0.5);
+            idx = 0;
+            update();
+        }
+    }
+
+    // Cambiar la pestaña de la fila actual
+    function setFila(tipo) {
+        filaActiva = tipo;
+        idx = 0;
+        
+        if (tipo === 'no') {
+            document.getElementById('btn-fila-no').classList.add('active');
+            document.getElementById('btn-fila-si').classList.remove('active');
+        } else {
+            document.getElementById('btn-fila-no').classList.remove('active');
+            document.getElementById('btn-fila-si').classList.add('active');
+        }
+        
+        update();
+    }
+
+    // Clasificar las tarjetas entre aprendidas y por aprender
+    function clasificarPalabra(loSabe) {
+        let listaOrigen = filaActiva === 'no' ? palabrasNoConozco : palabrasYaConozco;
+        let listaDestino = filaActiva === 'no' ? palabrasYaConozco : palabrasNoConozco;
+
+        if (listaOrigen.length === 0) return;
+
+        // Si la clasificación no implica moverla a otra lista, simplemente avanza
+        if ((filaActiva === 'no' && !loSabe) || (filaActiva === 'si' && loSabe)) {
+            next();
+            return;
+        }
+
+        // Mover el elemento a la lista destino
+        const palabraMovida = listaOrigen.splice(idx, 1)[0];
+        listaDestino.push(palabraMovida);
+
+        update();
+    }
+
+    // Atajos de teclado para ordenador
+    document.addEventListener('keydown', (e) => {
+        if(e.code === 'ArrowRight') next();
+        if(e.code === 'ArrowLeft') prev();
+        if(e.code === 'Space') flip();
+    });
+
+    update();
+</script>
+</body>
+</html>
