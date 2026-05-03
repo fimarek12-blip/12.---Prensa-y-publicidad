@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Vocabulario Avanzado - Clase</title>
+    
+    <style>
+        :root { --p: #2c3e50; --a: #3498db; --bg: #f4f7f6; --ok: #27ae60; --bad: #e74c3c; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: var(--bg); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px 0;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* Título centrado */
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+            text-align: center;
+        }
+
+        /* Botones para cambiar entre filas */
+        .row-selector {
+            display: flex;
+            gap: 10px;
+            width: 90vw;
+            max-width: 450px;
+            margin-bottom: 15px;
+        }
+
+        .row-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--p);
+            border-radius: 10px;
+            background: white;
+            color: var(--p);
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .row-btn.active {
+            background: var(--p);
+            color: white;
+        }
+
+        .card-container { 
+            perspective: 1000px; 
+            width: 90vw; 
+            max-width: 450px; 
+            height: 300px; 
+            cursor: pointer;
+            touch-action: manipulation; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card { 
+            width: 100%; 
+            height: 100%; 
+            position: relative; 
+            transition: transform 0.4s; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            border-radius: 15px;
+            transform-style: preserve-3d;
+            -webkit-transform-style: preserve-3d;
+        }
+
+        .card.flipped { transform: rotateY(180deg); }
+
+        .face { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 25px; 
+            box-sizing: border-box; 
+            border-radius: 15px; 
+            text-align: center; 
+            font-size: 1.4rem;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        .front { background: white; color: var(--p); font-weight: bold; border: 2px solid #ddd; }
+        .back { background: var(--a); color: white; transform: rotateY(180deg); font-size: 1.2rem; }
+
+        .controls { 
+            margin-top: 15px;
+            display: flex; 
+            gap: 10px; 
+            width: 90vw; 
+            max-width: 450px;
+        }
+
+        .action-controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            width: 90vw;
+            max-width: 450px;
+        }
+
+        button { 
+            flex: 1; 
+            padding: 15px 10px; 
+            border: none; 
+            border-radius: 12px; 
+            background: var(--p); 
+            color: white; 
+            font-size: 1rem; 
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation; 
+        }
+
+        .btn-know { background: var(--ok); }
+        .btn-dont-know { background: var(--bad); }
+
+        .info { margin-top: 12px; font-weight: bold; color: #7f8c8d; }
+
+        @media (max-height: 600px) {
+            .card-container { height: 220px; }
+            .face { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Prensa y publicidad</h1>
+
+    <div class="row-selector">
+        <button class="row-btn active" id="btn-fila-no" onclick="setFila('no')">Por aprender (<span id="count-no">0</span>)</button>
+        <button class="row-btn" id="btn-fila-si" onclick="setFila('si')">Ya aprendidas (<span id="count-si">0</span>)</button>
+    </div>
+
+    <div class="card-container" onclick="flip()">
+        <div class="card" id="c">
+            <div class="face front" id="q">Cargando...</div>
+            <div class="face back" id="a">...</div>
+        </div>
+    </div>
+
+    <div class="info" id="status">0 / 0</div>
+
+    <div class="controls">
+        <button onclick="prev()">⬅ Ant.</button>
+        <button onclick="shuffle()">🔀 Mezclar</button>
+        <button onclick="next()">Sig. ➡</button>
+    </div>
+
+    <div class="action-controls" id="eval-controls">
+        <button class="btn-dont-know" onclick="clasificarPalabra(false)">❌ No la sé</button>
+        <button class="btn-know" onclick="clasificarPalabra(true)">✔ Ya la sé</button>
+    </div>
+
+<script>
+    // Tu lista original de palabras del archivo de Naturaleza
+    const todasLasPalabras = [
+        {q: "periódico, m./rotativo, m./gaceta, f.", a: ""},
+	{q: "periódico, m., diario, (m.), semanal/semanario, (m.),", a: ""},
+	{q: "quincenal", a: ""},
+	{q: "anual", a: ""},
+	{q: "mensual", a: ""},
+	{q: "bimensual", a: ""},
+	{q: "bimestral", a: ""},
+	{q: "trimestral,", a: ""},
+	{q: "bianual", a: ""},
+	{q: "local", a: ""},
+	{q: "comarcal", a: ""},
+	{q: "provincial", a: ""},
+	{q: "regional", a: ""},
+	{q: "autonómico", a: ""},
+	{q: "nacional", a: ""},
+	{q: "internacional", a: ""},
+	{q: "de larga tirada/de tirada larga/de gran tirada/de mucha tirada x de corta tirada/de tirada corta/de pequeña tirada", a: ""},
+	{q: "digital", a: ""},
+	{q: "tirada, f., de mil ejemplares", a: ""},
+	{q: "número, m. de ejemplares", a: ""},
+	{q: "publicación, f./edición, f., extraordinaria/especial", a: ""},
+	{q: "número, m. monográfico", a: ""},
+	{q: "suplemento, m", a: ""},
+	{q: "dominical, m.", a: ""},
+	{q: "revista, f., cultural,", a: ""},
+	{q: "revista, f., literaria", a: ""},
+	{q: "revista, f., científica", a: ""},
+	{q: "revista, f., de investigación", a: ""},
+	{q: "revista, f., deportiva", a: ""},
+	{q: "revista, f., de humor/humorística", a: ""},
+	{q: "revista, f., de moda", a: ""},
+	{q: "revista, f., para/de jóvenes/juvenil", a: ""},
+	{q: "revista, f., infantil", a: ""},
+	{q: "revista, f., estudiantil", a: ""},
+	{q: "revista, f., universitaria", a: ""},
+	{q: "revista, f., financiera/ de finanzas", a: ""},
+	{q: "revista, f., de naturaleza", a: ""},
+	{q: "revista, f., de ecología/ecológica", a: ""},
+	{q: "revista, f., de decoración", a: ""},
+	{q: "revista, f., para el/del hogar", a: ""},
+	{q: "revista, f., científica", a: ""},
+	{q: "tebeo, m./cómic, m.", a: ""},
+	{q: "boletín, m. (informativo)", a: ""},
+	{q: "folleto, m. (informativo, turístico)", a: ""},
+	{q: "orientación, f., ideología, f., (de un periódico)", a: ""},
+	{q: "orientación, f., del gobierno/gubernamental, adj./del poder", a: ""},
+	{q: "orientación, f., de tendencias izquierdistas x derechistas", a: ""},
+	{q: "orientación, f., de izquierdas x de derechas", a: ""},
+	{q: "prensa, f., objetiva, sensacionalista/amarilla", a: ""},
+	{q: "dar la campanada/ hacer furor, ser un cañonazo/una bomba", a: ""},
+	{q: "periodicucho, m. (de mala muerte)", a: ""},
+	{q: "redacción, f.", a: ""},
+	{q: "redactor/-a, m. y f.", a: ""},
+	{q: "redactar", a: ""},
+	{q: "imprenta, f.", a: ""},
+	{q: "impresor/-a, m. y f.", a: ""},
+	{q: "imprimir", a: ""},
+	{q: "editorial, f.", a: ""},
+	{q: "editar", a: ""},
+	{q: "cierre, m. de (la) edición", a: ""},
+	{q: "publicación, f.", a: ""},
+	{q: "publicar", a: ""},
+	{q: "sacar a la luz (pública)", a: ""},
+	{q: "de venta en los quioscos/puestos de periódicos", a: ""},
+	{q: "vendedor/-a, m.", a: ""},
+	{q: "repartidor/-a, m. y f.", a: ""},
+	{q: "hacer la ruta", a: ""},
+	{q: "suspender la edición por motivos de censura informativa/de prensa", a: ""},
+	{q: "periodista, m y f. de la actualidad (política)", a: ""},
+	{q: "publicista, m. y f.", a: ""},
+	{q: "comentarista, m. y f.", a: ""},
+	{q: "cronista, m. y f. deportivo/-a", a: ""},
+	{q: "corresponsal, m. y f. en Roma", a: ""},
+	{q: "enviado, m. especial al extranjero,", a: ""},
+	{q: "enviado, m. de guerra", a: ""},
+	{q: "director/-a, m. y f. del periódico", a: ""},
+	{q: "subdirector/-a, m. y f.", a: ""},
+	{q: "redactor/-a, m. y f.", a: ""},
+	{q: "redactor/-a-jefe/-a, m y f.", a: ""},
+	{q: "jefe/-a, m. y f. de sección", a: ""},
+	{q: "corrector/-a, m. y f.", a: ""},
+	{q: "reportero/-a, m. y f. gráfico/-a", a: ""},
+	{q: "colaborador/-a, m.", a: ""},
+	{q: "colaborar con una revista", a: ""},
+	{q: "trabajar de redactor/-a", a: ""},
+	{q: "trabajar para una revista", a: ""},
+	{q: "portada, f.", a: ""},
+	{q: "contraportada, f.", a: ""},
+	{q: "páginas, pl.f, centrales", a: ""},
+	{q: "contenido, m.", a: ""},
+	{q: "sumario, m.", a: ""},
+	{q: "opinión, f.", a: ""},
+	{q: "editorial, m.", a: ""},
+	{q: "carta, f., al director", a: ""},
+	{q: "información, f., internacional x nacional, local, regional", a: ""},
+	{q: "sección, f., apartado, m.", a: ""},
+	{q: "sección, f., especial/extra", a: ""},
+	{q: "especial, m.", a: ""},
+	{q: "extra, m.", a: ""},
+	{q: "sociedad, f.,", a: ""},
+	{q: "espectáculos, pl.m.", a: ""},
+	{q: "cultura, f.", a: ""},
+	{q: "cartelera, f.", a: ""},
+	{q: "deportes, pl.m.", a: ""},
+	{q: "economía, f.", a: ""},
+	{q: "bolsa, f.", a: ""},
+	{q: "servicios, pl.m.", a: ""},
+	{q: "agenda, f.", a: ""},
+	{q: "tiempo, m.", a: ""},
+	{q: "necrológica, f./esquela, f.", a: ""},
+	{q: "horóscopo, m.", a: ""},
+	{q: "pasatiempos, m.", a: ""},
+	{q: "crucigrama, m.", a: ""},
+	{q: "caricatura, f.", a: ""},
+	{q: "chiste, m.", a: ""},
+	{q: "anuncios, pl.m. publicitarios", a: ""},
+	{q: "noticia, f. de última hora x de primera hora/primicia, f.,", a: ""},
+	{q: "de primera mano x de segunda mano", a: ""},
+	{q: "de primera plana/de portada", a: ""},
+	{q: "aparecer en primera plana", a: ""},
+	{q: "hecho, m.", a: ""},
+	{q: "acontecimiento, m.", a: ""},
+	{q: "asunto, m.", a: ""},
+	{q: "incidente, m.", a: ""},
+	{q: "artículo, m.", a: ""},
+	{q: "titular, m.", a: ""},
+	{q: "subtitular, m.", a: ""},
+	{q: "encabezamiento, m.,", a: ""},
+	{q: "letra, f. cursiva, f.", a: ""},
+	{q: "letra, f. negrita, f.", a: ""},
+	{q: "línea, f.", a: ""},
+	{q: "renglón, m.", a: ""},
+	{q: "párrafo, m.", a: ""},
+	{q: "columna, f.", a: ""},
+	{q: "pie, m. de foto", a: ""},
+	{q: "fe, f. de erratas/errores", a: ""},
+	{q: "traer informaciones básicas", a: ""},
+	{q: "relatar", a: ""},
+	{q: "contar", a: ""},
+	{q: "referir", a: ""},
+	{q: "transmitir los hechos desde un punto de vista/de manera objetivo (a) x subjetivo (a)", a: ""},
+	{q: "explicar los pormenores del accidente", a: ""},
+	{q: "ofrecer una amplia información sobre un hecho", a: ""},
+	{q: "dar una información exhaustiva", a: ""},
+	{q: "abarcar toda la información", a: ""},
+	{q: "ahondar en un asunto, profundizar en la noticia", a: ""},
+	{q: "entrar en detalles", a: ""},
+	{q: "informar desde el lugar de los hechos", a: ""},
+	{q: "rueda, f./conferencia, f., de prensa", a: ""},
+	{q: "declaración, f./comunicado, m. de prensa x a la prensa", a: ""},
+	{q: "agencia, f. de información/informativa", a: ""},
+	{q: "facilitar información", a: ""},
+	{q: "tener amplio eco en toda la prensa", a: ""},
+	{q: "ocupar la opinión pública, dedicar la máxima atención", a: ""},
+	{q: "entrevistar a alguien/hacer/realizar una entrevista x conceder una entrevista/acceder a ser entrevistado hacer/realizar un reportaje", a: ""},
+	{q: "tratar un tema palpitante, candente, de (rabiosa) actualidad", a: ""},
+	{q: "criticar/atacar/combatir algo", a: ""},
+	{q: "escandalizar, indignar", a: ""},
+	{q: "alterar la realidad de los hechos", a: ""},
+	{q: "deformar, falsear el mensaje,", a: ""},
+	{q: "deformar las palabras de alguien", a: ""},
+	{q: "echar tierra al asunto", a: ""},
+	{q: "pasar por alto el escándalo, callar/encubrir algunos hechos", a: ""},
+	{q: "sin pizca de fundamento", a: ""},
+	{q: "noticia, f. falsa", a: ""},
+	{q: "desinformación, f., bulo, m.", a: ""},
+	{q: "lector, m., abonado, m.", a: ""},
+	{q: "abonarse a/suscribirse a", a: ""},
+	{q: "estar abonado a un periódico", a: ""},
+	{q: "suscripción, f. anual", a: ""},
+	{q: "número, m. de suscripciones/suscriptores/ abonados", a: ""},
+	{q: "número, m./círculo, m. de lectores", a: ""},
+	{q: "dirigirse al lector medio x a un lector especializado", a: ""},
+	{q: "ser un lector regular/asiduo/fiel/leal", a: ""},
+	{q: "ser un lector crítico/exigente", a: ""},
+	{q: "echar un vistazo al periódico/ojear", a: ""},
+	{q: "pasar las páginas/hojear", a: ""},
+	{q: "leer la revista de corrido", a: ""},
+	{q: "llamar la atención", a: ""},
+	{q: "recorte, m. de periódico", a: ""},
+
+	    ];
+
+    // Listas dinámicas para clasificar las palabras
+    let palabrasNoConozco = [...todasLasPalabras];
+    let palabrasYaConozco = [];
+
+    let filaActiva = 'no'; // 'no' (por aprender) o 'si' (ya aprendidas)
+    let idx = 0;
+
+    const cardEl = document.getElementById('c');
+    const qEl = document.getElementById('q');
+    const aEl = document.getElementById('a');
+    const sEl = document.getElementById('status');
+
+    function getListaActiva() {
+        return filaActiva === 'no' ? palabrasNoConozco : palabrasYaConozco;
+    }
+
+    function update() {
+        const lista = getListaActiva();
+        cardEl.classList.remove('flipped');
+        
+        // Actualizar contadores dinámicamente en las pestañas superiores
+        document.getElementById('count-no').innerText = palabrasNoConozco.length;
+        document.getElementById('count-si').innerText = palabrasYaConozco.length;
+
+        if (lista.length === 0) {
+            qEl.innerText = "¡Lista vacía!";
+            aEl.innerText = filaActiva === 'no' ? "¡Enhorabuena, has repasado todo!" : "No has añadido ninguna palabra aquí aún.";
+            sEl.innerText = "0 / 0";
+            return;
+        }
+
+        // Validación de límites del índice por si se vacían elementos
+        if (idx >= lista.length) {
+            idx = Math.max(0, lista.length - 1);
+        }
+
+        setTimeout(() => {
+            qEl.innerText = lista[idx].q;
+            aEl.innerText = lista[idx].a;
+            sEl.innerText = `${idx + 1} / ${lista.length}`;
+        }, 100);
+    }
+
+    function flip() { 
+        const lista = getListaActiva();
+        if (lista.length > 0) cardEl.classList.toggle('flipped'); 
+    }
+    
+    function next() { 
+        const lista = getListaActiva();
+        if(idx < lista.length - 1) { idx++; update(); } 
+    }
+    
+    function prev() { 
+        if(idx > 0) { idx--; update(); } 
+    }
+
+    function shuffle() {
+        const lista = getListaActiva();
+        if (lista.length > 0) {
+            lista.sort(() => Math.random() - 0.5);
+            idx = 0;
+            update();
+        }
+    }
+
+    // Cambiar la pestaña de la fila actual
+    function setFila(tipo) {
+        filaActiva = tipo;
+        idx = 0;
+        
+        if (tipo === 'no') {
+            document.getElementById('btn-fila-no').classList.add('active');
+            document.getElementById('btn-fila-si').classList.remove('active');
+        } else {
+            document.getElementById('btn-fila-no').classList.remove('active');
+            document.getElementById('btn-fila-si').classList.add('active');
+        }
+        
+        update();
+    }
+
+    // Clasificar las tarjetas entre aprendidas y por aprender
+    function clasificarPalabra(loSabe) {
+        let listaOrigen = filaActiva === 'no' ? palabrasNoConozco : palabrasYaConozco;
+        let listaDestino = filaActiva === 'no' ? palabrasYaConozco : palabrasNoConozco;
+
+        if (listaOrigen.length === 0) return;
+
+        // Si la clasificación no implica moverla a otra lista, simplemente avanza
+        if ((filaActiva === 'no' && !loSabe) || (filaActiva === 'si' && loSabe)) {
+            next();
+            return;
+        }
+
+        // Mover el elemento a la lista destino
+        const palabraMovida = listaOrigen.splice(idx, 1)[0];
+        listaDestino.push(palabraMovida);
+
+        update();
+    }
+
+    // Atajos de teclado para ordenador
+    document.addEventListener('keydown', (e) => {
+        if(e.code === 'ArrowRight') next();
+        if(e.code === 'ArrowLeft') prev();
+        if(e.code === 'Space') flip();
+    });
+
+    update();
+</script>
+</body>
+</html>
